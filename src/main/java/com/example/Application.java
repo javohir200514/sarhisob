@@ -6,7 +6,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import com.vaadin.flow.component.dependency.StyleSheet;
 import com.vaadin.flow.component.page.AppShellConfigurator;
+import org.springframework.cache.annotation.EnableCaching;
 
+
+@EnableCaching
 @SpringBootApplication
 @StyleSheet(Lumo.STYLESHEET) // Use Aura.STYLESHEET to use Aura instead
 @StyleSheet(Lumo.UTILITY_STYLESHEET)
