@@ -51,6 +51,7 @@ public class RegistrationView extends VerticalLayout {
     @Autowired
     private ProfileRepository userRepository;
 
+
     private TextField firstNameField;
     private TextField lastNameField;
     private EmailField emailField;
@@ -644,6 +645,9 @@ public class RegistrationView extends VerticalLayout {
                 boolean result = smsHistoryService.isCodeSentToEmail(email, code);
 
                 if (result) {
+
+                    userService.enableByEmail(email);
+
                     Notification notification = Notification.show(
                             "Email muvaffaqiyatli tasdiqlandi",
                             2500,

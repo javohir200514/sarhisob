@@ -60,4 +60,12 @@ public class UserService {
         });
         return personalInfoDTOList;
     }
+
+    public void enableByEmail(String email) {
+        ProfileEntity profile = profileRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Foydalanuvchi topilmadi"));
+
+        profile.setEnabled(true);
+        profileRepository.save(profile);
+    }
 }
