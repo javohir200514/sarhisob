@@ -86,14 +86,14 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
         centerLinks.setWidthFull();
         centerLinks.getStyle().set("gap", "4px");
 
-        RouterLink home = createNavLink("Home", HomeView.class);
-        RouterLink contactUs = createNavLink("Contact Us", ContactUsView.class);
+        RouterLink home = createNavLink("Bosh sahifa", HomeView.class);
+        RouterLink contactUs = createNavLink("Bog‘lanish", ContactUsView.class);
 
         centerLinks.add(home);
 
         if (isAuthenticated) {
-            RouterLink expenses = createNavLink("Expenses", ExpensesView.class);
-            RouterLink statistics = createNavLink("Statistics", StatisticsView.class);
+            RouterLink expenses = createNavLink("Xarajatlar", ExpensesView.class);
+            RouterLink statistics = createNavLink("Statistika", StatisticsView.class);
             centerLinks.add(expenses, statistics);
         }
 
@@ -146,13 +146,13 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
                     .set("background", "transparent")
                     .set("border-radius", "18px");
 
-            userRoot.getSubMenu().addItem("Profile",
+            userRoot.getSubMenu().addItem("Profil",
                     e -> UI.getCurrent().navigate(ProfileView.class));
 
-            userRoot.getSubMenu().addItem("Profile Settings",
+            userRoot.getSubMenu().addItem("Profil sozlamalari",
                     e -> UI.getCurrent().navigate(AccountSettingsView.class));
 
-            Span logoutText = new Span("Logout");
+            Span logoutText = new Span("Chiqish");
             logoutText.getStyle().set("color", "var(--lumo-error-text-color)");
 
             userRoot.getSubMenu().addItem(logoutText,
@@ -161,7 +161,7 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
             rightActions.add(userMenu);
 
         } else {
-            RouterLink login = new RouterLink("Login", LoginView.class);
+            RouterLink login = new RouterLink("Kirish", LoginView.class);
             login.getStyle()
                     .set("text-decoration", "none")
                     .set("font-weight", "600")
@@ -171,7 +171,7 @@ public class MainLayout extends AppLayout implements AfterNavigationObserver {
                     .set("border-radius", "10px")
                     .set("transition", "all 0.3s ease");
 
-            Button signUp = new Button("Sign Up");
+            Button signUp = new Button("Ro‘yxatdan o‘tish");
             signUp.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
             signUp.getStyle()
                     .set("background", "#2563eb")

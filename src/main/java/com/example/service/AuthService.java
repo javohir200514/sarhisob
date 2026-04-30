@@ -29,7 +29,7 @@ public class AuthService {
     public boolean login(String username, String password) {
 
         Optional<ProfileEntity> optional =
-                profileRepository.findByEmailAndVisibleIsTrue(username);
+                profileRepository.findByEmailAndVisibleIsTrueAndEnabledIsTrue(username);
 
         if (optional.isEmpty()) {
             return false;
@@ -63,5 +63,11 @@ public class AuthService {
         );
 
         return true;
+    }
+
+    public boolean existsUser(String username) {
+        return profileRepository
+                .findByEmailAndVisibleIsTrueAndEnabledIsTrue(username)
+                .isPresent();
     }
 }

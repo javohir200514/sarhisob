@@ -344,6 +344,7 @@ public class LoginView extends VerticalLayout {
     private void handleLogin() {
         String phone = phoneField.getValue();
         String password = passwordField.getValue();
+
         if (phone == null || phone.isBlank() || password == null || password.isBlank()) {
             Notification.show(
                     "Iltimos, barcha maydonlarni to‘ldiring",
@@ -352,7 +353,9 @@ public class LoginView extends VerticalLayout {
             ).addThemeVariants(NotificationVariant.LUMO_CONTRAST);
             return;
         }
+
         boolean success = authService.login(phone, password);
+
         if (success) {
             Notification.show(
                     "Muvaffaqiyatli login",
@@ -363,10 +366,21 @@ public class LoginView extends VerticalLayout {
             UI.getCurrent().navigate("");
             return;
         }
-        Notification.show(
-                "Telefon yoki parol noto‘g‘ri",
-                3000,
-                Notification.Position.TOP_END
-        ).addThemeVariants(NotificationVariant.LUMO_ERROR);
+
+        boolean exists = authService.existsUser(phone);
+
+        if (!exists) {
+            Notification.show(
+                    "Siz hali ro‘yxatdan o‘tmagansiz",
+                    3000,
+                    Notification.Position.TOP_END
+            ).addThemeVariants(NotificationVariant.LUMO_ERROR);
+        } else {
+            Notification.show(
+                    "Login yoki parol noto‘g‘ri",
+                    3000,
+                    Notification.Position.TOP_END
+            ).addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
     }
 }

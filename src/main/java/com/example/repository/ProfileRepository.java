@@ -19,7 +19,7 @@ public interface ProfileRepository extends CrudRepository<ProfileEntity, Integer
     @Query("SELECT p.id FROM ProfileEntity p WHERE p.email = :email AND p.enabled = true")
     Integer findProfileIdByEmail(@Param("email") String email);
 
-    Optional<ProfileEntity> findByEmailAndEnabledTrue(String email);
+    Optional<ProfileEntity> findByEmailAndVisibleIsTrueAndEnabledIsTrue(String email);
 
     List<ProfileEntity> findTop5ByEnabledTrueOrderByIdDesc();
     @Modifying

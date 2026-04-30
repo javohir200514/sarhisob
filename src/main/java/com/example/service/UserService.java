@@ -33,7 +33,7 @@ public class UserService {
         profileEntity.setEmail(user.getEmail());
         profileEntity.setPassword(bCryptPasswordEncoder.encode(user.getPassword()));
         profileEntity.setProfileRoles(new ArrayList<>());
-        profileEntity.setVisible(true);
+        profileEntity.setVisible(false);
         profileEntity.setCreatedDate(LocalDateTime.now());
         profileRepository.save(profileEntity);
 
