@@ -42,4 +42,6 @@ public interface ProfileRepository extends CrudRepository<ProfileEntity, Integer
     void addPhotoFkOnDeleteSetNull();
 
     long countByEnabledTrue();
+
+    boolean existsByEmail(String email);
 }

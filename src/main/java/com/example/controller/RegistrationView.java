@@ -1,6 +1,7 @@
 package com.example.controller;
 
 import com.example.dto.RegistrationDTO;
+import com.example.entity.ProfileEntity;
 import com.example.entity.SmsHistoryEntity;
 import com.example.exseption.AppBadException;
 import com.example.repository.ProfileRepository;
@@ -32,11 +33,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Route("/registration")
 @PageTitle("Ro'yxatdan o'tish")
 @AnonymousAllowed
 public class RegistrationView extends VerticalLayout {
+
     @Autowired
     private EmailSenderService emailSenderService;
 
@@ -45,12 +48,12 @@ public class RegistrationView extends VerticalLayout {
 
     @Autowired
     private AuthService authService;
+
     @Autowired
     private UserService userService;
 
     @Autowired
     private ProfileRepository userRepository;
-
 
     private TextField firstNameField;
     private TextField lastNameField;
@@ -106,34 +109,32 @@ public class RegistrationView extends VerticalLayout {
 
     private void injectAutofillFix() {
         getElement().executeJs("""
-        if (!document.getElementById('registration-autofill-fix')) {
-            const style = document.createElement('style');
-            style.id = 'registration-autofill-fix';
-            style.innerHTML = `
-                .registration-view input:-webkit-autofill,
-                .registration-view input:-webkit-autofill:hover,
-                .registration-view input:-webkit-autofill:focus {
-                    -webkit-box-shadow: 0 0 0 1000px rgba(8,20,42,0.95) inset !important;
-                    -webkit-text-fill-color: #eaf2ff !important;
-                    caret-color: #eaf2ff !important;
-                    transition: background-color 9999s ease-in-out 0s;
-                }
-
-                .registration-view vaadin-text-field::part(input-field),
-                .registration-view vaadin-email-field::part(input-field),
-                .registration-view vaadin-password-field::part(input-field) {
-                    background: rgba(8,20,42,0.95) !important;
-                    border-radius: 12px;
-                }
-
-                .registration-view vaadin-password-field::part(reveal-button) {
-                    background: transparent !important;
-                    color: #94a3b8 !important;
-                }
-            `;
-            document.head.appendChild(style);
-        }
-    """);
+            if (!document.getElementById('registration-autofill-fix')) {
+                const style = document.createElement('style');
+                style.id = 'registration-autofill-fix';
+                style.innerHTML = `
+                    .registration-view input:-webkit-autofill,
+                    .registration-view input:-webkit-autofill:hover,
+                    .registration-view input:-webkit-autofill:focus {
+                        -webkit-box-shadow: 0 0 0 1000px rgba(8,20,42,0.95) inset !important;
+                        -webkit-text-fill-color: #eaf2ff !important;
+                        caret-color: #eaf2ff !important;
+                        transition: background-color 9999s ease-in-out 0s;
+                    }
+                    .registration-view vaadin-text-field::part(input-field),
+                    .registration-view vaadin-email-field::part(input-field),
+                    .registration-view vaadin-password-field::part(input-field) {
+                        background: rgba(8,20,42,0.95) !important;
+                        border-radius: 12px;
+                    }
+                    .registration-view vaadin-password-field::part(reveal-button) {
+                        background: transparent !important;
+                        color: #94a3b8 !important;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        """);
     }
 
     private VerticalLayout buildRegistrationCard() {
@@ -164,7 +165,7 @@ public class RegistrationView extends VerticalLayout {
                 .set("letter-spacing", "-0.03em")
                 .set("line-height", "1.15");
 
-        Paragraph sub = new Paragraph("Yangi hisob yaratish uchun maydonlarni to‘ldiring.");
+        Paragraph sub = new Paragraph("Yangi hisob yaratish uchun maydonlarni to'ldiring.");
         sub.getStyle()
                 .set("margin", "0 0 8px 0")
                 .set("text-align", "center")
@@ -280,10 +281,8 @@ public class RegistrationView extends VerticalLayout {
         EmailField field = new EmailField();
         field.setPlaceholder(placeholder);
         field.setWidthFull();
-
         field.getElement().setAttribute("autocomplete", "new-email");
         field.getElement().setAttribute("name", "email-" + System.nanoTime());
-
         applyFieldStyles(field);
         field.addValueChangeListener(e -> clearFieldError(field));
         return field;
@@ -293,10 +292,8 @@ public class RegistrationView extends VerticalLayout {
         PasswordField field = new PasswordField();
         field.setPlaceholder(placeholder);
         field.setWidthFull();
-
         field.getElement().setAttribute("autocomplete", "new-password");
         field.getElement().setAttribute("name", "password-" + System.nanoTime());
-
         applyFieldStyles(field);
         field.addValueChangeListener(e -> clearFieldError(field));
         return field;
@@ -314,17 +311,18 @@ public class RegistrationView extends VerticalLayout {
     }
 
     private void handleSubmit() {
-        boolean valid = true;
-
         clearAllLabels();
         clearAllInvalids();
 
-        String firstName = value(firstNameField);
-        String lastName = value(lastNameField);
-        String email = value(emailField);
-        String password = value(passwordField);
+        boolean valid = true;
+
+        String firstName       = value(firstNameField);
+        String lastName        = value(lastNameField);
+        String email           = value(emailField);
+        String password        = value(passwordField);
         String confirmPassword = value(confirmPasswordField);
 
+        // ── Ism ──────────────────────────────────────────────────────────────
         if (firstName.isBlank()) {
             setFieldError(firstNameField, firstNameLabel, "Ism — kiritilishi shart");
             valid = false;
@@ -333,22 +331,44 @@ public class RegistrationView extends VerticalLayout {
             valid = false;
         }
 
+        // ── Familiya ─────────────────────────────────────────────────────────
         if (lastName.isBlank()) {
             setFieldError(lastNameField, lastNameLabel, "Familiya — kiritilishi shart");
             valid = false;
         }
 
+        // ── Email ─────────────────────────────────────────────────────────────
         if (email.isBlank()) {
             setFieldError(emailField, emailLabel, "Email — kiritilishi shart");
             valid = false;
         } else if (!isValidEmail(email)) {
             setFieldError(emailField, emailLabel, "Email — noto'g'ri format");
             valid = false;
-        } else if (userRepository.findByEmailAndVisibleIsTrue(email).isPresent()) {
-            setFieldError(emailField, emailLabel, "Email — allaqachon ro'yxatdan o'tgan");
-            valid = false;
+        } else {
+            // TUZATISH: visible=true/false — ikkalasini ham tekshiramiz
+            Optional<ProfileEntity> existingProfile = userRepository.findByEmail(email);
+            if (existingProfile.isPresent()) {
+                ProfileEntity profile = existingProfile.get();
+                if (profile.isEnabled()) {
+                    // Tasdiqlangan hisob — login sahifasiga yo'naltiramiz
+                    setFieldError(emailField, emailLabel, "Email — allaqachon ro'yxatdan o'tgan");
+                } else {
+                    // Tasdiqlanmagan hisob — kodni qayta yuborib dialog ochamiz
+                    setFieldError(emailField, emailLabel,
+                            "Email — tasdiqlanmagan, yangi kod yuborildi");
+                    try {
+                        emailSenderService.sendRegistrationEmail(email);
+                        openVerificationDialog(email);
+                    } catch (Exception ex) {
+                        showErrorNotification("Kod yuborishda xatolik: " + ex.getMessage());
+                    }
+                    return; // dialog ochildi, keyingi ishlar kerak emas
+                }
+                valid = false;
+            }
         }
 
+        // ── Parol ─────────────────────────────────────────────────────────────
         if (password.isBlank()) {
             setFieldError(passwordField, passwordLabel, "Parol — kiritilishi shart");
             valid = false;
@@ -363,8 +383,10 @@ public class RegistrationView extends VerticalLayout {
             valid = false;
         }
 
+        // ── Parolni tasdiqlash ────────────────────────────────────────────────
         if (confirmPassword.isBlank()) {
-            setFieldError(confirmPasswordField, confirmPasswordLabel, "Tasdiq paroli — kiritilishi shart");
+            setFieldError(confirmPasswordField, confirmPasswordLabel,
+                    "Tasdiq paroli — kiritilishi shart");
             valid = false;
         } else if (!confirmPassword.equals(password)) {
             setFieldError(confirmPasswordField, confirmPasswordLabel, "Tasdiq paroli — mos emas");
@@ -372,15 +394,11 @@ public class RegistrationView extends VerticalLayout {
         }
 
         if (!valid) {
-            Notification notification = Notification.show(
-                    "Iltimos, barcha maydonlarni to'g'ri to'ldiring",
-                    2500,
-                    Notification.Position.TOP_END
-            );
-            notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            showErrorNotification("Iltimos, barcha maydonlarni to'g'ri to'ldiring");
             return;
         }
 
+        // ── Saqlash ───────────────────────────────────────────────────────────
         try {
             RegistrationDTO dto = new RegistrationDTO();
             dto.setFirstName(firstName);
@@ -402,56 +420,49 @@ public class RegistrationView extends VerticalLayout {
             openVerificationDialog(email);
 
         } catch (Exception e) {
-            Notification notification = Notification.show(
-                    "Xatolik yuz berdi: " + e.getMessage(),
-                    3000,
-                    Notification.Position.TOP_END
-            );
-            notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            showErrorNotification("Xatolik yuz berdi: " + e.getMessage());
         }
     }
 
+    // ── Tasdiqlash dialogi ────────────────────────────────────────────────────
+
     private void openVerificationDialog(String email) {
-        com.vaadin.flow.component.dialog.Dialog dialog = new com.vaadin.flow.component.dialog.Dialog();
+        com.vaadin.flow.component.dialog.Dialog dialog =
+                new com.vaadin.flow.component.dialog.Dialog();
         dialog.setCloseOnEsc(false);
         dialog.setCloseOnOutsideClick(false);
 
         dialog.addOpenedChangeListener(event -> {
             if (event.isOpened()) {
                 dialog.getElement().executeJs("""
-                const overlay = this.$.overlay;
-                if (!overlay) return;
-
-                const sr = overlay.shadowRoot;
-                if (!sr) return;
-
-                const backdrop = sr.querySelector('[part="backdrop"]');
-                const overlayPart = sr.querySelector('[part="overlay"]');
-                const content = sr.querySelector('[part="content"]');
-
-                if (backdrop) {
-                    backdrop.style.background = 'rgba(3, 8, 20, 0.74)';
-                    backdrop.style.backdropFilter = 'blur(14px)';
-                    backdrop.style.webkitBackdropFilter = 'blur(14px)';
-                }
-
-                if (overlayPart) {
-                    overlayPart.style.background = 'transparent';
-                    overlayPart.style.boxShadow = 'none';
-                    overlayPart.style.border = 'none';
-                    overlayPart.style.padding = '0';
-                }
-
-                if (content) {
-                    content.style.background = 'transparent';
-                    content.style.boxShadow = 'none';
-                    content.style.border = 'none';
-                    content.style.padding = '0';
-                    content.style.margin = '0';
-                    content.style.borderRadius = '28px';
-                    content.style.overflow = 'visible';
-                }
-            """);
+                    const overlay = this.$.overlay;
+                    if (!overlay) return;
+                    const sr = overlay.shadowRoot;
+                    if (!sr) return;
+                    const backdrop    = sr.querySelector('[part="backdrop"]');
+                    const overlayPart = sr.querySelector('[part="overlay"]');
+                    const content     = sr.querySelector('[part="content"]');
+                    if (backdrop) {
+                        backdrop.style.background = 'rgba(3,8,20,0.74)';
+                        backdrop.style.backdropFilter = 'blur(14px)';
+                        backdrop.style.webkitBackdropFilter = 'blur(14px)';
+                    }
+                    if (overlayPart) {
+                        overlayPart.style.background = 'transparent';
+                        overlayPart.style.boxShadow  = 'none';
+                        overlayPart.style.border      = 'none';
+                        overlayPart.style.padding     = '0';
+                    }
+                    if (content) {
+                        content.style.background    = 'transparent';
+                        content.style.boxShadow     = 'none';
+                        content.style.border         = 'none';
+                        content.style.padding        = '0';
+                        content.style.margin         = '0';
+                        content.style.borderRadius   = '28px';
+                        content.style.overflow       = 'visible';
+                    }
+                """);
             }
         });
 
@@ -473,28 +484,19 @@ public class RegistrationView extends VerticalLayout {
 
         Div glowTop = new Div();
         glowTop.getStyle()
-                .set("position", "absolute")
-                .set("top", "-70px")
-                .set("right", "-40px")
-                .set("width", "180px")
-                .set("height", "180px")
-                .set("border-radius", "50%")
+                .set("position", "absolute").set("top", "-70px").set("right", "-40px")
+                .set("width", "180px").set("height", "180px").set("border-radius", "50%")
                 .set("background", "radial-gradient(circle, rgba(37,99,235,0.18) 0%, transparent 70%)")
-                .set("filter", "blur(18px)")
-                .set("pointer-events", "none");
+                .set("filter", "blur(18px)").set("pointer-events", "none");
 
         Div glowBottom = new Div();
         glowBottom.getStyle()
-                .set("position", "absolute")
-                .set("bottom", "-90px")
-                .set("left", "-50px")
-                .set("width", "200px")
-                .set("height", "200px")
-                .set("border-radius", "50%")
+                .set("position", "absolute").set("bottom", "-90px").set("left", "-50px")
+                .set("width", "200px").set("height", "200px").set("border-radius", "50%")
                 .set("background", "radial-gradient(circle, rgba(29,78,216,0.14) 0%, transparent 72%)")
-                .set("filter", "blur(20px)")
-                .set("pointer-events", "none");
+                .set("filter", "blur(20px)").set("pointer-events", "none");
 
+        // Header
         HorizontalLayout header = new HorizontalLayout();
         header.setWidthFull();
         header.setPadding(false);
@@ -509,29 +511,23 @@ public class RegistrationView extends VerticalLayout {
         Button backBtn = new Button(VaadinIcon.ARROW_LEFT.create());
         backBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         backBtn.getStyle()
-                .set("width", "40px")
-                .set("height", "40px")
-                .set("min-width", "40px")
-                .set("padding", "0")
-                .set("border-radius", "14px")
+                .set("width", "40px").set("height", "40px").set("min-width", "40px")
+                .set("padding", "0").set("border-radius", "14px")
                 .set("background", "rgba(255,255,255,0.04)")
                 .set("border", "1px solid rgba(255,255,255,0.06)")
-                .set("color", "#f8fafc")
-                .set("cursor", "pointer");
+                .set("color", "#f8fafc").set("cursor", "pointer");
 
-        H2 title = new H2("Email tasdiqlash");
-        title.getStyle()
-                .set("margin", "0")
-                .set("font-size", "20px")
-                .set("font-weight", "800")
-                .set("letter-spacing", "-0.02em")
+        H2 dlgTitle = new H2("Email tasdiqlash");
+        dlgTitle.getStyle()
+                .set("margin", "0").set("font-size", "20px")
+                .set("font-weight", "800").set("letter-spacing", "-0.02em")
                 .set("color", "#f8fafc");
 
         Div rightSpace = new Div();
         rightSpace.getStyle().set("width", "40px");
+        header.add(backBtn, dlgTitle, rightSpace);
 
-        header.add(backBtn, title, rightSpace);
-
+        // Body
         VerticalLayout body = new VerticalLayout();
         body.setPadding(false);
         body.setSpacing(false);
@@ -546,31 +542,24 @@ public class RegistrationView extends VerticalLayout {
 
         Span badge = new Span("Tasdiqlash kodi yuborildi");
         badge.getStyle()
-                .set("align-self", "flex-start")
-                .set("padding", "6px 12px")
-                .set("border-radius", "999px")
-                .set("font-size", "11px")
-                .set("font-weight", "700")
-                .set("letter-spacing", ".05em")
+                .set("align-self", "flex-start").set("padding", "6px 12px")
+                .set("border-radius", "999px").set("font-size", "11px")
+                .set("font-weight", "700").set("letter-spacing", ".05em")
                 .set("text-transform", "uppercase")
                 .set("background", "rgba(37,99,235,0.12)")
                 .set("border", "1px solid rgba(59,130,246,0.18)")
                 .set("color", "#93c5fd");
 
         Paragraph text = new Paragraph(
-                email + " manziliga yuborilgan tasdiqlash kodini kiriting."
-        );
+                email + " manziliga yuborilgan tasdiqlash kodini kiriting.");
         text.getStyle()
-                .set("margin", "0")
-                .set("font-size", "14px")
-                .set("line-height", "1.8")
-                .set("color", "#94a3b8");
+                .set("margin", "0").set("font-size", "14px")
+                .set("line-height", "1.8").set("color", "#94a3b8");
 
         TextField codeField = new TextField("Tasdiqlash kodi");
         codeField.setPlaceholder("5 xonali kod");
         codeField.setWidthFull();
         applyFieldStyles(codeField);
-
         codeField.getStyle()
                 .set("--vaadin-input-field-background", "rgba(255,255,255,0.035)")
                 .set("--vaadin-input-field-border-color", "rgba(96,165,250,0.10)")
@@ -584,28 +573,22 @@ public class RegistrationView extends VerticalLayout {
         timerRow.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
 
         Span timerHint = new Span("Kod amal qilish vaqti");
-        timerHint.getStyle()
-                .set("font-size", "12px")
-                .set("color", "#64748b");
+        timerHint.getStyle().set("font-size", "12px").set("color", "#64748b");
 
         Span timerLabel = new Span("02:00");
         timerLabel.getStyle()
-                .set("font-size", "14px")
-                .set("font-weight", "800")
-                .set("color", "#60a5fa");
+                .set("font-size", "14px").set("font-weight", "800").set("color", "#60a5fa");
 
         timerRow.add(timerHint, timerLabel);
 
         Button verifyBtn = new Button("Tasdiqlash");
         verifyBtn.setWidthFull();
         verifyBtn.getStyle()
-                .set("height", "46px")
-                .set("border-radius", "16px")
-                .set("background", "linear-gradient(135deg,#163b7a 0%, #1d4ed8 55%, #2563eb 100%)")
-                .set("color", "#ffffff")
-                .set("font-size", "15px")
-                .set("font-weight", "800")
-                .set("letter-spacing", "0.01em")
+                .set("height", "46px").set("border-radius", "16px")
+                .set("background",
+                        "linear-gradient(135deg,#163b7a 0%, #1d4ed8 55%, #2563eb 100%)")
+                .set("color", "#ffffff").set("font-size", "15px")
+                .set("font-weight", "800").set("letter-spacing", "0.01em")
                 .set("cursor", "pointer")
                 .set("border", "1px solid rgba(96,165,250,0.14)")
                 .set("box-shadow", "0 14px 28px rgba(29,78,216,0.22)");
@@ -614,14 +597,11 @@ public class RegistrationView extends VerticalLayout {
         resendBtn.setVisible(false);
         resendBtn.setWidthFull();
         resendBtn.getStyle()
-                .set("height", "44px")
-                .set("border-radius", "16px")
+                .set("height", "44px").set("border-radius", "16px")
                 .set("border", "1px solid rgba(96,165,250,0.20)")
                 .set("background", "rgba(37,99,235,0.08)")
-                .set("color", "#93c5fd")
-                .set("font-size", "14px")
-                .set("font-weight", "700")
-                .set("cursor", "pointer");
+                .set("color", "#93c5fd").set("font-size", "14px")
+                .set("font-weight", "700").set("cursor", "pointer");
 
         backBtn.addClickListener(e -> {
             dialog.close();
@@ -630,72 +610,43 @@ public class RegistrationView extends VerticalLayout {
 
         verifyBtn.addClickListener(e -> {
             String code = codeField.getValue() == null ? "" : codeField.getValue().trim();
-
             if (code.isBlank()) {
-                Notification notification = Notification.show(
-                        "Tasdiqlash kodini kiriting",
-                        2500,
-                        Notification.Position.TOP_END
-                );
-                notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+                showErrorNotification("Tasdiqlash kodini kiriting");
                 return;
             }
-
             try {
                 boolean result = smsHistoryService.isCodeSentToEmail(email, code);
-
                 if (result) {
-
                     userService.enableByEmail(email);
-
-                    Notification notification = Notification.show(
+                    Notification n = Notification.show(
                             "Email muvaffaqiyatli tasdiqlandi",
-                            2500,
-                            Notification.Position.TOP_END
-                    );
-                    notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-
+                            2500, Notification.Position.TOP_END);
+                    n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                     dialog.close();
                     UI.getCurrent().navigate("/login");
                 }
             } catch (Exception ex) {
-                Notification notification = Notification.show(
-                        ex.getMessage(),
-                        3000,
-                        Notification.Position.TOP_END
-                );
-                notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+                showErrorNotification(ex.getMessage());
             }
         });
 
         resendBtn.addClickListener(e -> {
             try {
                 emailSenderService.sendRegistrationEmail(email);
-
-                Notification notification = Notification.show(
-                        "Kod qayta yuborildi",
-                        2500,
-                        Notification.Position.TOP_END
-                );
-                notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-
+                Notification n = Notification.show(
+                        "Kod qayta yuborildi", 2500, Notification.Position.TOP_END);
+                n.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 resendBtn.setVisible(false);
                 timerLabel.setVisible(true);
                 timerHint.setVisible(true);
                 startVerificationTimer(dialog, timerLabel, resendBtn, 120);
             } catch (Exception ex) {
-                Notification notification = Notification.show(
-                        "Kod yuborishda xatolik: " + ex.getMessage(),
-                        3000,
-                        Notification.Position.TOP_END
-                );
-                notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+                showErrorNotification("Kod yuborishda xatolik: " + ex.getMessage());
             }
         });
 
         body.add(badge, text, codeField, timerRow, verifyBtn, resendBtn);
         wrap.add(glowTop, glowBottom, header, body);
-
         dialog.add(wrap);
         dialog.open();
 
@@ -712,42 +663,42 @@ public class RegistrationView extends VerticalLayout {
         resendBtn.setVisible(false);
 
         dialog.getElement().executeJs("""
-        const timerEl = $0;
-        const resendEl = $1;
-        let remaining = $2;
+            const timerEl  = $0;
+            const resendEl = $1;
+            let remaining  = $2;
 
-        if (window.registrationOtpTimer) {
-            clearInterval(window.registrationOtpTimer);
-        }
+            if (window.registrationOtpTimer) {
+                clearInterval(window.registrationOtpTimer);
+            }
 
-        function formatTime(sec) {
-            const min = String(Math.floor(sec / 60)).padStart(2, '0');
-            const secPart = String(sec % 60).padStart(2, '0');
-            return min + ':' + secPart;
-        }
+            function formatTime(sec) {
+                const min     = String(Math.floor(sec / 60)).padStart(2,'0');
+                const secPart = String(sec % 60).padStart(2,'0');
+                return min + ':' + secPart;
+            }
 
-        timerEl.textContent = formatTime(remaining);
-
-        window.registrationOtpTimer = setInterval(() => {
-            remaining--;
             timerEl.textContent = formatTime(remaining);
 
-            if (remaining <= 0) {
-                clearInterval(window.registrationOtpTimer);
-                timerEl.style.display = 'none';
-                resendEl.style.display = 'inline-flex';
-                resendEl.style.width = '100%';
-            }
-        }, 1000);
-    """, timerLabel.getElement(), resendBtn.getElement(), totalSeconds);
+            window.registrationOtpTimer = setInterval(() => {
+                remaining--;
+                timerEl.textContent = formatTime(remaining);
+                if (remaining <= 0) {
+                    clearInterval(window.registrationOtpTimer);
+                    timerEl.style.display  = 'none';
+                    resendEl.style.display = 'inline-flex';
+                    resendEl.style.width   = '100%';
+                }
+            }, 1000);
+        """, timerLabel.getElement(), resendBtn.getElement(), totalSeconds);
     }
+
+    // ── Yordamchi metodlar ────────────────────────────────────────────────────
+
     public boolean isCodeSentToEmail(String email, String code) {
-        SmsHistoryEntity smsHistoryEntity =smsHistoryService.getByEmail(email);
+        SmsHistoryEntity smsHistoryEntity = smsHistoryService.getByEmail(email);
 
         Integer attemptCount = smsHistoryService.getAttemptCount(email);
-        if (attemptCount == null) {
-            attemptCount = 0;
-        }
+        if (attemptCount == null) attemptCount = 0;
 
         long secondsBetween = Duration.between(
                 smsHistoryEntity.getCreatedDate(),
@@ -757,25 +708,30 @@ public class RegistrationView extends VerticalLayout {
         if (secondsBetween > 120) {
             throw new AppBadException("Tasdiqlash kodi eskirgan. Qaytadan kod oling.");
         }
-
         if (attemptCount > 3) {
             throw new AppBadException("Urinishlar soni tugagan. Qaytadan kod oling.");
         }
-
         if (!code.equals(smsHistoryEntity.getCode())) {
-            int remainingAttempts = Math.max(0, 3 - attemptCount);
-            throw new AppBadException("Tasdiqlash kodi noto‘g‘ri. Qolgan urinishlar soni: " + remainingAttempts);
+            int remaining = Math.max(0, 3 - attemptCount);
+            throw new AppBadException(
+                    "Tasdiqlash kodi noto'g'ri. Qolgan urinishlar soni: " + remaining);
         }
 
         smsHistoryService.deleteById(smsHistoryEntity.getId());
         return true;
     }
 
+    private void showErrorNotification(String message) {
+        Notification notification = Notification.show(
+                message, 3000, Notification.Position.TOP_END);
+        notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+    }
+
     private void clearAllLabels() {
-        resetLabel(firstNameLabel, "Ism", true);
-        resetLabel(lastNameLabel, "Familiya", true);
-        resetLabel(emailLabel, "Email", true);
-        resetLabel(passwordLabel, "Parol", true);
+        resetLabel(firstNameLabel,       "Ism",                true);
+        resetLabel(lastNameLabel,        "Familiya",           true);
+        resetLabel(emailLabel,           "Email",              true);
+        resetLabel(passwordLabel,        "Parol",              true);
         resetLabel(confirmPasswordLabel, "Parolni tasdiqlash", true);
     }
 
